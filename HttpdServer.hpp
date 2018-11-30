@@ -16,7 +16,7 @@ public:
         //初始化监听socket
         if(listen_sock<0)
         {
-            LOG(ERROR,"create socket error!");
+            LOG(ERROR,"Create Socket Error!");
             //如果创建失败，打印日志
             exit(2);
         }
@@ -29,21 +29,21 @@ public:
         //INADDR_ANY绑定该机器任意一个IP地址
         if(bind(listen_sock,(struct sockaddr*)&local_,sizeof(local_))<0)
         {//绑定端 如果失败打印日志
-            LOG(ERROR,"bind socket error!");
+            LOG(ERROR,"Bind Socket Error!");
             exit(3);
         }
         if(listen(listen_sock,5)<0)
         {
             //如果监听失败打印日志信息
-            LOG(ERROR,"listen socket error");
+            LOG(ERROR,"Listen Socket Error");
             exit(4);
         }
         //dai biao zhengchang
-        LOG(INFO,"initserver success!");
+        LOG(INFO,"Initserver Success!");
     }
     void Start()
     {
-        LOG(INFO,"start server begin!");
+        LOG(INFO,"Start Server Begin!");
         for(;;)
         {
             struct sockaddr_in peer_;
@@ -51,10 +51,10 @@ public:
             int sock_=accept(listen_sock,(struct sockaddr*)&peer_,&len_);
             if(sock_<0)
             {
-                LOG(WARNING,"accept error!");
+                LOG(WARNING,"Accept Error!");
                 continue;
             }
-            LOG(INFO,"get new client, create thread handler request...");
+            LOG(INFO,"Get New Client, Create Thread Handler Request");
              pthread_t tid_;
              int *sockp_=new int;
              *sockp_=sock_;
