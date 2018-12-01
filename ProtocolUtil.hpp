@@ -190,6 +190,7 @@ class Request{
         bool IsNeedRecvText()
         {
             LOG(INFO,"IsNeedRecvText Success");
+            cout<<method<<endl;
           if(strcasecmp(method.c_str(),"POST")==0)
           {
               return true;
@@ -207,6 +208,10 @@ class Request{
         int GetResoureSize()
         {
             return resource_size;
+        }
+        void SetResourceSize(int rs_)
+        {
+            resource_size=rs_;
         }
         string& GetPath()
         {
@@ -355,15 +360,19 @@ class Connect{
         void RecvRequestText(string& text_,int len_,string& param_)
         {
            LOG(INFO,"RecvRequestText Success");
-          char c_;
+          cout<<"请求长度"<<len_;
+           char c_;
           int i_=0;
           while(i_<len_)
           {
             recv(sock,&c_,1,0);
+            cout<<c_;
             text_.push_back(c_);
           }
           param_=text_;
-          cout<<param_<<endl;
+          
+          cout<<"text_"<<text_<<endl;
+          cout<<"param_"<<param_<<endl;
         }
         void SendResponse(Response *&rsp_,Request *&rq_,bool cgi_)
         {
@@ -379,7 +388,8 @@ class Connect{
             cout<<rsp_blank_;
             if(cgi_)//如果是cgi发送的是处理后的数据
             {
-
+               string &rsp_text_=rsp_->rsp_text;
+               send(sock,rsp_text_.c_str(),rsp_text_.size(),0);
             }
             else
             {
@@ -411,10 +421,77 @@ class Entry{
             rsp_->OpenResource(rq_);
             conn_->SendResponse(rsp_,rq_,false);
         }
+       static void ProcessCgi(Connect *&conn_,Request *&rq_,Response *&rsp_)
+       {
+           LOG(INFO,"ProcessCgi");
+           int &code_=rsp_->code;
+           int input[2];
+           int output[2];
+           string &param_=rq_->GetParam();
+           string &rsp_text_=rsp_->rsp_text;
+
+           pipe(input);
+           pipe(output);
+           pid_t id=fork();
+           if(id<0)
+           {
+               code_=NOT_FOUND;
+               return ;
+           }
+           else
+           {
+               if(id==0)
+               {
+                   close(input[1]);
+                   close(output[0]);
+                   const string &path_=rq_->GetPath();
+                   string cl_env_="Content-Length=";
+                   cl_env_+=ProtocolUtil::IntToString(param_.size());
+                   cout<<"env: "<<cl_env_<<endl;
+                   putenv((char*)cl_env_.c_str());
+                   dup2(input[0],0);
+                   dup2(output[1],1);
+                   execl(path_.c_str(),path_.c_str(),NULL);
+                   exit(1);
+               }
+               else
+               {
+                   close(input[0]);
+                   close(output[1]);
+
+                   size_t size_=param_.size();
+                   size_t total_=0;
+                   size_t curr_=0;
+                   const char *p_=param_.c_str();
+                   while(total_<size_&&\
+                           (curr_=write(input[1],p_+total_,size_-total_))>0)
+                   {
+                       total_+=curr_;
+                   }
+                   cout<<total_<<endl;
+                   char c;
+                   while(read(output[0],&c,1)>0)
+                   {
+                       rsp_text_.push_back(c);
+                   }
+                   cout<<"rsp_text:"<<rsp_text_<<endl;
+                   waitpid(id,NULL,0);
+
+                   close(input[1]);
+                   close(output[0]);
+                   
+                   rsp_->MakeStatusLine();
+                   rq_->SetResourceSize(rsp_text_.size());
+                   rsp_->MakeResponseHead(rq_);
+                   conn_->SendResponse(rsp_,rq_,true);
+               }
+           }
+       }
        static int ProcessResponse(Connect *&conn_,Request *&rq_,Response *&rsp_)
         {
             if(rq_->IsCgi())
             {
+                ProcessCgi(conn_,rq_,rsp_);
             }
             else
             {
