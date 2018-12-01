@@ -78,7 +78,10 @@ class Request{
             :blank("\n")
              ,cgi(false)
              ,path(WEB_ROOT)
-    {}
+             ,resource_size(0)
+             ,content_length(-1)
+             ,resource_suffix(".html")
+                 {}
         void RequestLineParse()//把读到的一行数据拆分成三部分
         {
             LOG(INFO,"RequestLineParse Success");
@@ -89,6 +92,8 @@ class Request{
         void UriParse()//解析uri判断是否是cgi以及分割uri uri可能包含两部分一部分是资源路径一部分是参数
         {
             LOG(INFO,"UriParse Success");
+            if(strcasecmp(method.c_str(),"GET")==0)
+            {
             size_t pos_=uri.find('?');//？是判断标准因为资源路径和参数的分割线是以?分割的如果没有代表uri中没有参数
             if(string::npos!=pos_)//找到了
             {
@@ -99,6 +104,11 @@ class Request{
             else
             {
                 path+=uri;//如果没找到uri中没有参数所有都是路径
+            }
+            }
+            else
+            {
+                path+=uri;
             }
             if(path[path.size()-1]=='/')
             {//这里处理请求的是文件夹的情况如果请求文件夹直接返回默认的主页
@@ -190,7 +200,7 @@ class Request{
         {
             return cgi;
         }
-        string GetSuffix()
+        string& GetSuffix()
         {
             return  resource_suffix;
         }
@@ -198,7 +208,7 @@ class Request{
         {
             return resource_size;
         }
-        string GetPath()
+        string& GetPath()
         {
             return path;
         }
@@ -334,12 +344,13 @@ class Connect{
             LOG(INFO,"RecvRequestHead Success");
             head_="";
             string line_;
+            while(line_!="\n")
             {
                line_="";
                RecvOneLine(line_);//继续用recv读取一行数据
                head_+=line_;
+               cout<<line_;
             }
-            cout<<head_<<endl;
         }
         void RecvRequestText(string& text_,int len_,string& param_)
         {
