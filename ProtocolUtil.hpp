@@ -368,6 +368,7 @@ class Connect{
             recv(sock,&c_,1,0);
             cout<<c_;
             text_.push_back(c_);
+            i++;
           }
           param_=text_;
           
