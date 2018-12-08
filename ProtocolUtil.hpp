@@ -21,12 +21,14 @@
 using namespace std;
 
 #define OK 200
+#define BAD_REQUEST 400
 #define NOT_FOUND 404
+#define SERVER_ERROR 500
 
 #define HOME_PAGE "index.html"//主页文件
 #define WEB_ROOT "wwwroot"//根目录
 #define HTTP_VERSION "http/1.0"
-
+#define PAGE_404 "404.html"
 unordered_map<string,string> stuffix_map{
     {".html","text/html"},
     {".htm","text/html"},
@@ -60,8 +62,12 @@ class ProtocolUtil
         {
             case 200:
                 return "OK";
+            case 400:
+                return "BAD REQUEST";
             case 404:
-                return "NOT FOUND";
+                return "NOT_FOUND";
+            case 500:
+                return "INTERNAL SERVER ERROR";
             default:
                 return "UNKNOW";
         }
@@ -204,6 +210,14 @@ class Request{
         string& GetSuffix()
         {
             return  resource_suffix;
+        }
+        void SetSuffix(string suffix_)
+        {
+            resource_suffix=suffix_;
+        }
+        void SetPath(string &path_)
+        {
+            path=path_;
         }
         int GetResoureSize()
         {
@@ -368,7 +382,7 @@ class Connect{
             recv(sock,&c_,1,0);
             cout<<c_;
             text_.push_back(c_);
-            i++;
+            i_++;
           }
           param_=text_;
           
@@ -500,6 +514,23 @@ class Entry{
                 ProcessNonCgi(conn_,rq_,rsp_); 
             }
         }
+       static void Process404(Connect *&conn_,Request *&rq_,Response *&rsp_)
+       {
+           string path_=WEB_ROOT;
+           path_+="/";
+           path_+=PAGE_404;
+           struct stat st;
+           stat(path_.c_str(),&st);
+           rq_->SetResourceSize(st.st_size);
+           rq_->SetSuffix(".html");
+           rq_->SetPath(path_);
+           ProcessNonCgi(conn_,rq_,rsp_);
+       }
+       static void HandlerError(Connect *&conn_,Request *&rq_,Response *&rsp_)
+       {
+           int &code_=rsp_->code;
+           Process404(conn_,rq_,rsp_);
+       }
         static void *HandlerRequest(void *arg_)
         {//arg_是监听到的socket
            LOG(INFO,"HandlerRequest Success");
@@ -546,6 +577,8 @@ class Entry{
 end:
           if(code_!=OK)
           {
+              LOG(INFO,"HandlerError\n");
+              HandlerError(conn_,rq_,rsp_);
           }
           delete conn_;
           delete rq_;
