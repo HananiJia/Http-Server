@@ -363,11 +363,11 @@ class Connect{
             LOG(INFO,"RecvRequestHead Success");
             head_="";
             string line_;
-            while(line_!="\n")
+            while(line_!="\n")//这里已经把报头第三部分空行读取了
             {
                line_="";
                RecvOneLine(line_);//继续用recv读取一行数据
-               head_+=line_;
+               head_+=line_;//把所有分开的首部拼成一个操作方便
                cout<<line_;
             }
         }
@@ -531,33 +531,43 @@ class Entry{
            int &code_=rsp_->code;
            Process404(conn_,rq_,rsp_);
        }
-        static void *HandlerRequest(void *arg_)
+        static int HandlerRequest(int sock_)
+        //线程调用需要函数返回值和参数类型为void*
         {//arg_是监听到的socket
            LOG(INFO,"HandlerRequest Success");
-          int sock_=*(int*)arg_;
-          delete (int*)arg_;
+          //int sock_=*(int*)arg_;//这里把拿到的参数转为int类型并且释放空间
+         // delete (int*)arg_;
           Connect *conn_=new Connect(sock_);
           Request *rq_=new Request();
           Response *rsp_=new Response();
           
-          int &code_=rsp_->code;
+          int &code_=rsp_->code;//获取返回类中状态码
  
           conn_->RecvOneLine(rq_->rq_line);
           //读取一行数据第一行自然给了请求类中的请求头
           rq_->RequestLineParse();
+         //解析读取到的第一行数据
+
           if(!rq_->IsMethodLegal())//如果请求数据的方式合法
-          {
-              code_=NOT_FOUND;
-              goto end;
-          }
-          rq_->UriParse();
-          if(!rq_->IsPathLegal())
-          {
-              code_=NOT_FOUND;
-              goto end;
-          }
-          LOG(INFO,"Request Path is OK!");
+          {//只简单处理了GET和POST  请求所以拒绝非法请求方式
           conn_->RecvRequestHead(rq_->rq_head);//读取请求报头首部数据之后放到rq_head里边
+              code_=NOT_FOUND;
+              goto end;
+          }
+
+          rq_->UriParse();//解析URI分割资源路径和参数
+
+          if(!rq_->IsPathLegal())//如果路径非法直接返回对应404网页
+          {
+          conn_->RecvRequestHead(rq_->rq_head);//读取请求报头首部数据之后放到rq_head里边
+              code_=NOT_FOUND;
+              goto end;
+          }
+
+          LOG(INFO,"Request Path is OK!");
+
+          conn_->RecvRequestHead(rq_->rq_head);//读取请求报头首部数据之后放到rq_head里边
+         
           if(rq_->RequestHeadParse())
           {
               LOG(INFO,"Parse Head Done");
@@ -567,10 +577,12 @@ class Entry{
               code_=NOT_FOUND;
               goto end;
           }
+
           if(rq_->IsNeedRecvText())//判断是不是需要读取正文部分，get方法不需要读取
           {
              conn_->RecvRequestText(rq_->rq_text,rq_->GetContentLength(),rq_->GetParam());
           }
+
           LOG(INFO,"ProcessResponse");
           ProcessResponse(conn_,rq_,rsp_);
           LOG(INFO,"end");

@@ -2,6 +2,7 @@
 #define __HTTPD_SERVER_HPP__
 
 #include<pthread.h>
+#include"ThreadPool.hpp"
 #include"ProtocolUtil.hpp"
 
 class HttpdServer{
@@ -9,6 +10,7 @@ public:
     HttpdServer(int port_)
         :port(port_)
          ,listen_sock(-1)
+         ,tp(NULL)
     {}//构造函数
     void InitServer()//初始化函数绑定端口监听指定端口
     {
@@ -38,7 +40,9 @@ public:
             LOG(ERROR,"Listen Socket Error");
             exit(4);
         }
-        //dai biao zhengchang
+        //代表一切正常打印成功日志
+        tp=new ThreadPool();
+        tp->initThreadPool();
         LOG(INFO,"Initserver Success!");
     }
     void Start()
@@ -56,9 +60,12 @@ public:
             }
             LOG(INFO,"Get New Client, Create Thread Handler Request");
              pthread_t tid_;
-             int *sockp_=new int;
-             *sockp_=sock_;
-             pthread_create(&tid_,NULL,Entry::HandlerRequest,(void*)sockp_);
+             Task t;
+             t.SetTask(sock_,Entry::HandlerRequest);
+             tp->PushTask(t);
+            // pthread_create(&tid_,NULL,Entry::HandlerRequest,(void*)sockp_);
+             //将接受到的socket通过多线程的方式去调用handlerquest函数
+             //这里要注意线程创建函数后两个参数类型要是void*
         }
     } 
     ~HttpdServer()
@@ -73,5 +80,6 @@ public:
 private: 
     int listen_sock;
     int port;
+    ThreadPool *tp;
 };
 #endif 

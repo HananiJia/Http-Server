@@ -13,7 +13,7 @@ int main(int argc,char*argv[])
       Usage(argv[0]);
 	  exit(1);
 	}
-   signal(SIGPIPE,SIG_IGN);
+   signal(SIGPIPE,SIG_IGN);//更新：忽略管道信号参数防止客户端恶意关闭后导致程序退出
     HttpdServer *serp=new HttpdServer(atoi(argv[1]));
     //构造服务器类对象把要监听的端口传进去
     serp->InitServer();//初始化服务器
