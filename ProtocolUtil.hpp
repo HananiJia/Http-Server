@@ -355,7 +355,6 @@ class Connect{
                     break;
                 }
             }
-            cout<<line_;
             return line_.size();
         }
         void RecvRequestHead(string &head_)
@@ -366,7 +365,11 @@ class Connect{
             while(line_!="\n")//这里已经把报头第三部分空行读取了
             {
                line_="";
-               RecvOneLine(line_);//继续用recv读取一行数据
+               int ret=RecvOneLine(line_);//继续用recv读取一行数据
+               if(line_.size()==0)
+               {
+                   break;
+               }
                head_+=line_;//把所有分开的首部拼成一个操作方便
                cout<<line_;
             }
